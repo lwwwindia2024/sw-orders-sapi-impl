@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<sub-flow name="mapJoinedOrders" doc:id="8265d668-dca0-468f-8e27-2d1f07fdced3" >
+		<ee:transform doc:name="Transform Message" doc:id="5fffa5c5-ac4a-4b10-a985-788071e673a1" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var ordersGroupedById=payload groupBy ((item, index) -> item.order_id )
+var ordersmappedWithorderItems = ordersGroupedById mapObject (V,K,I)-> {
+	(K):{
+		orderId: K,
+		customerId: V[0].customer_id,
+		restaurantId: V[0].restaurant_id,
+		deliveryAddressId: V[0].delivery_address_id,
+		orderTotalPrice: V[0].order_total_price,
+		orderStatus: V[0].order_status,
+		orderTime: V[0].order_time,
+		(orderItems: ( V map (item)-> {
+						
+						orderItemId: item.order_item_id,
+						orderId: item.order_id,
+						menuId: item.menu_id,
+						menuItemId: item.menu_item_id,
+						restaurantId: item.restaurant_id,
+						quantity: item.quantity,
+						orderItemPrice: item.order_item_price
+		             }
+		             
+		             )) if (V[0].order_item_id != null)
+		
+	}
+}
+---
+ordersmappedWithorderItems pluck (V,K,I)-> V]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<flow name="getAllOrdersOfACustomer" doc:id="ab30cd95-3846-4faf-a845-85acfcbbaaf7" >
+		<db:select doc:name="Select" doc:id="4c610c08-35a1-4d58-a3c5-dedccc3ef7aa" config-ref="Database_Config" >
+			<db:sql ><![CDATA[SELECT o.order_id,o.customer_id,o.restaurant_id,o.delivery_address_id,o.order_total_price,
+o.order_status,o.order_time,oi.order_item_id,oi.menu_item_id,oi.menu_id,oi.quantity,oi.order_item_price
+ FROM  orders o left join  order_items oi on o.order_id=oi.order_id where o.customer_id= :customerId;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	customerId: vars.id as Number
+}]]]></db:input-parameters>
+		</db:select>
+		<flow-ref doc:name="mapJoinedOrders" doc:id="7d6c2f34-dc81-44bb-bb9d-70833a4bfcd9" name="mapJoinedOrders" />
+	</flow>
+</mule>
