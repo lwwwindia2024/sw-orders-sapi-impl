@@ -51,4 +51,15 @@ o.order_status,o.order_time,oi.order_item_id,oi.menu_item_id,oi.menu_id,oi.quant
 		</db:select>
 		<flow-ref doc:name="mapJoinedOrders" doc:id="7d6c2f34-dc81-44bb-bb9d-70833a4bfcd9" name="mapJoinedOrders" />
 	</flow>
+	<flow name="getallorders" doc:id="2c5ec3dc-ecd2-49b3-a421-011806b914ef" >
+		<db:select doc:name="Select" doc:id="fccd0780-4e45-41d3-b39b-d94617bedb5c" config-ref="Database_Config" >
+			<db:sql ><![CDATA[
+
+
+SELECT o.order_id,o.customer_id,o.restaurant_id,o.delivery_address_id,o.order_total_price,
+o.order_status,o.order_time,oi.order_item_id,oi.menu_item_id,oi.menu_id,oi.quantity,oi.order_item_price
+ FROM  orders o left join  order_items oi on o.order_id=oi.order_id;]]></db:sql>
+		</db:select>
+		<flow-ref doc:name="mapJoinedOrders" doc:id="4f46b628-612c-418c-a32d-978d3dfba022" name="mapJoinedOrders" />
+	</flow>
 </mule>
