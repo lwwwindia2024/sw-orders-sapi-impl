@@ -110,7 +110,7 @@ orderTime: vars.inputOrder.orderTime
 				<db:auto-generated-keys-column-name value="order_id" />
 			</db:auto-generated-keys-column-names>
 		</db:insert>
-		<set-variable value="#[vars.insertresult.generatedKeys.GENERATED_KEY]" doc:name="Set Variable" doc:id="15b32d70-8992-43e7-8e60-fe8a1e367b13" variableName="orderId" />
+		<set-variable value="#[vars.insertresult.generatedKeys.GENERATED_KEY]" doc:name="Set Variable" doc:id="15b32d70-8992-43e7-8e60-fe8a1e367b13" variableName="id" />
 		<choice doc:name="Choice" doc:id="5a3a5e1e-fd65-453d-a1e2-fc5545acc0ef" >
 			<when expression="#[vars.inputOrder.orderItems? and sizeOf(vars.inputOrder.orderItems)&gt;0]" >
 				<set-variable value="#[[]]" doc:name="Set Variable" doc:id="5735a081-4caf-4c38-b572-0d740fa7ed95" variableName="orderItemsAfterInserting"/>
@@ -139,11 +139,11 @@ output application/json
 			</ee:message>
 		</ee:transform>
 	</flow>
-	<flow name="findOrderByOrderId1" doc:id="3b2e70e3-8743-44f9-bdb8-2d0f468b4441" >
+	<flow name="findOrderByOrderId" doc:id="3b2e70e3-8743-44f9-bdb8-2d0f468b4441" >
 		<db:select doc:name="Select" doc:id="48c94dc0-8377-4709-b5c5-f3b4dec858ae" config-ref="Database_Config" >
 			<db:sql ><![CDATA[select * from orders where order_id= :orderId]]></db:sql>
 			<db:input-parameters ><![CDATA[#[{
-	orderId: vars.orderId as Number
+	orderId: vars.id as Number
 }]]]></db:input-parameters>
 		</db:select>
 		<choice doc:name="Choice" doc:id="56431935-85b9-4949-95db-b9a0dbc1dd7d" >
@@ -154,5 +154,68 @@ output application/json
 				<set-payload value="#[payload[0]]" doc:name="Set Order As Payload" doc:id="d2949ef6-9793-46c0-926c-8fe7d4e53112" />
 			</otherwise>
 		</choice>
+	</flow>
+	<flow name="getOrderItemsByOrderId" doc:id="b12c9125-1d79-4001-81b8-f66649d03eac" >
+		<db:select doc:name="Select" doc:id="37f187e6-853e-42f6-9890-a43caca76641" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select * from order_items where order_id= :orderId]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	orderId: vars.id as Number
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="5f3bcf2a-2429-4d3a-ba1f-cd15eaf419b3" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map (item)->{
+  "menuId": item.menu_id,
+  "menuItemId": item.menu_item_id,
+  "orderItemId": item.order_item_id,
+  "orderId": item.order_id,
+  "orderItemPrice": item.order_item_price,
+  "restaurantId": item.restaurant_id,
+  "quantity": item.quantity
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="getOrderByOrderId" doc:id="fdb17a77-3e0e-46f2-bac9-bbc840103382" >
+		<flow-ref doc:name="findOrderByOrderId" doc:id="f92944c3-48be-4236-91ad-2c7099c8cb60" name="findOrderByOrderId" target="order" />
+		<flow-ref doc:name="getOrderItemsByOrderId" doc:id="765c7cb1-6dd8-4d7c-84be-0a6e00a7f01c" name="getOrderItemsByOrderId" target="orderItems" />
+		<ee:transform doc:name="Transform Message" doc:id="75a0e750-e820-4a28-ba89-be31de594aa0" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+      
+{
+  "orderId": vars.order.order_id,
+  "customerId": vars.order.customer_id,
+  "restaurantId": vars.order.restaurant_id,
+  "deliveryAddressId": vars.order.delivery_address_id,
+  "orderTotalPrice": vars.order.order_total_price,
+  "orderStatus": vars.order.order_status,
+  "orderTime": vars.order.order_time,
+  "orderItems": vars.orderItems
+}
+
+    ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="deleteorderbyoyderid" doc:id="75fc73df-aa2b-4594-ae99-81dfca2a0ca2" >
+		<flow-ref doc:name="findOrderByOrderId" doc:id="821dfe3a-835a-4114-964e-75cfe7aac32a" name="findOrderByOrderId" target="order" />
+		<db:delete doc:name="Delete orderitems" doc:id="62619f10-ab64-4a39-b35a-a655c34ef426" config-ref="Database_Config" >
+			<db:sql ><![CDATA[delete from order_items where order_id= :orderId]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	orderId: vars.id
+}]]]></db:input-parameters>
+		</db:delete>
+		<db:delete doc:name="Delete" doc:id="4e88d71f-4736-4272-a4f7-7c76feb52b4e" config-ref="Database_Config" >
+			<db:sql ><![CDATA[delete from orders where order_id= :orderId]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	orderId: vars.id
+}]]]></db:input-parameters>
+		</db:delete>
 	</flow>
 </mule>

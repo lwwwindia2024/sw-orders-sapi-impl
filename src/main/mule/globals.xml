@@ -12,6 +12,31 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 	</db:config>
 	<configuration doc:name="Configuration" doc:id="1d34941a-5415-49ca-b0c8-37679d9cba70" defaultErrorHandler-ref="globalsError_Handler" />
 	<error-handler name="globalsError_Handler" doc:id="af30beb4-00c9-4b98-95ec-b347ad455bfe" >
+		
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="ea4cce65-da66-4c5e-bc1a-a86c07f8388e" type="APP:DOESNOT_EXIST">
+			<ee:transform doc:name="Transform Message" doc:id="8351b7c9-5e28-46b1-b5c1-d0a8347acf2e" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+
+"status": "404",
+
+"message": error.description
+
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/java
+---
+"404"]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</on-error-propagate>
+		
+		
 		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="24f42380-a484-4c31-8d25-23cd2d4d8c1c" >
 			<ee:transform doc:name="Transform Message" doc:id="c80ed61b-9545-49bb-a1b1-3f2f5e488350">
 				<ee:message>

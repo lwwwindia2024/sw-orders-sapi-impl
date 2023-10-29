@@ -57,7 +57,7 @@
 		<dependency>
 			<groupId>dbf43717-03d0-4c7c-b36b-37ff146429d7</groupId>
 			<artifactId>sw-orders-sapi-raml</artifactId>
-			<version>1.0.4</version>
+			<version>1.0.5</version>
 			<classifier>raml</classifier>
 			<type>zip</type>
 		</dependency>
