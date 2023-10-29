@@ -3,7 +3,7 @@
     <http:listener-config name="sw-orders-sapi-raml-httpListenerConfig">
         <http:listener-connection host="0.0.0.0" port="8081" />
     </http:listener-config>
-    <apikit:config name="sw-orders-sapi-raml-config" api="resource::dbf43717-03d0-4c7c-b36b-37ff146429d7:sw-orders-sapi-raml:1.0.3:raml:zip:sw-orders-sapi-raml.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <apikit:config name="sw-orders-sapi-raml-config" api="resource::dbf43717-03d0-4c7c-b36b-37ff146429d7:sw-orders-sapi-raml:1.0.4:raml:zip:sw-orders-sapi-raml.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
     <flow name="sw-orders-sapi-raml-main">
         <http:listener config-ref="sw-orders-sapi-raml-httpListenerConfig" path="/api/*">
             <http:response statusCode="#[vars.httpStatus default 200]">
@@ -132,6 +132,26 @@ output application/json
         <flow-ref doc:name="getAllOrdersOfACustomer" doc:id="ea39f119-aac0-459a-9e8a-4c2879f73e82" name="getAllOrdersOfACustomer" />
     </flow>
     <flow name="get:\orders:sw-orders-sapi-raml-config">
-		<flow-ref doc:name="getallorders" doc:id="f67b715c-b50f-483d-a3c9-b300de6f87de" name="getallorders"/>
+        <flow-ref doc:name="getallorders" doc:id="f67b715c-b50f-483d-a3c9-b300de6f87de" name="getallorders" />
+    </flow>
+    <flow name="post:\orders:application\json:sw-orders-sapi-raml-config">
+        <flow-ref doc:name="AddOrder" doc:id="ad43175d-2d44-4aa6-897d-4b225d26db68" name="AddOrder"/>
+		<ee:transform doc:name="Set Location Header and 201 status" doc:id="6c3dee5a-58cc-4698-9314-897a3ebf4dc2" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="outboundHeaders" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	location: "/orders/" ++ 
+				(vars.orderId as String) default ""
+}]]></ee:set-variable>
+				<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/json
+---
+"201"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
     </flow>
 </mule>
