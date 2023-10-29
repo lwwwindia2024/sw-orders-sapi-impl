@@ -1,0 +1,12 @@
+%dw 2.0
+
+type auto_917402fb_ecf7_4eda_985c_f3bc3e69ba3b_Input_Variables_inputOrderItem = {
+  quantity: Number, 
+  orderId: Number, 
+  menuId: Number, 
+  restaurantId: Number, 
+  orderItemPrice: Number, 
+  menuItemId: Number, 
+  _?: Any
+}
+
