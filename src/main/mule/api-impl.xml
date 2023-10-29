@@ -51,4 +51,198 @@ o.order_status,o.order_time,oi.order_item_id,oi.menu_item_id,oi.menu_id,oi.quant
 		</db:select>
 		<flow-ref doc:name="mapJoinedOrders" doc:id="7d6c2f34-dc81-44bb-bb9d-70833a4bfcd9" name="mapJoinedOrders" />
 	</flow>
+	<flow name="getallorders" doc:id="2c5ec3dc-ecd2-49b3-a421-011806b914ef" >
+		<db:select doc:name="Select" doc:id="fccd0780-4e45-41d3-b39b-d94617bedb5c" config-ref="Database_Config" >
+			<db:sql ><![CDATA[
+
+
+SELECT o.order_id,o.customer_id,o.restaurant_id,o.delivery_address_id,o.order_total_price,
+o.order_status,o.order_time,oi.order_item_id,oi.menu_item_id,oi.menu_id,oi.quantity,oi.order_item_price
+ FROM  orders o left join  order_items oi on o.order_id=oi.order_id;]]></db:sql>
+		</db:select>
+		<flow-ref doc:name="mapJoinedOrders" doc:id="4f46b628-612c-418c-a32d-978d3dfba022" name="mapJoinedOrders" />
+	</flow>
+	<flow name="AddOrderItemToOrder" doc:id="917402fb-ecf7-4eda-985c-f3bc3e69ba3b" >
+		<flow-ref doc:name="findOrderByOrderId" doc:id="da9131bb-21d5-4c2b-8a98-a8a833efaec0" name="findOrderByOrderId" target="order" />
+		<set-variable value="#[{orderId: vars.order.order_id} ++ message.payload as Object]" doc:name="Set originalOrdetItem Variable" doc:id="bb674d91-652f-4dae-91a9-d5584982cffc" variableName="originalOrderItem" />
+		<db:insert doc:name="Insert OrderItem" doc:id="69f7a25a-7c08-4e54-9667-79fa8a0144b6" config-ref="Database_Config" autoGenerateKeys="true" target="insertorderitemresult" >
+			<db:sql ><![CDATA[INSERT INTO `order_items`(`order_id`,`menu_item_id`,`quantity`,`order_item_price`,`menu_id`,`restaurant_id`)
+VALUES(:orderId,:menuItemId,:quantity,:orderItemPrice,:menuId,:restaurantId);]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+orderId: vars.order.order_id as Number,
+menuItemId: payload.menuItemId as Number,
+quantity: payload.quantity as  Number,
+orderItemPrice: payload.orderItemPrice as Number,
+menuId: payload.menuId as Number,
+restaurantId: payload.restaurantId as Number
+
+}]]]></db:input-parameters>
+			<db:auto-generated-keys-column-names >
+				<db:auto-generated-keys-column-name value="order_item_id" />
+			</db:auto-generated-keys-column-names>
+		</db:insert>
+		<set-variable value="#[vars.insertorderitemresult.generatedKeys.GENERATED_KEY]" doc:name="Set generated OrderItemId var" doc:id="0a7c385e-7436-4362-8f8c-28fecd97aa66" variableName="orderItemId" />
+		<set-variable value="#[{orderItemId: vars.orderItemId} ++ vars.originalOrderItem]" doc:name="Set Variable" doc:id="f69d7606-5697-4ce8-a77d-bc2276312dbd" variableName="orderItemAfterInserting"/>
+	</flow>
+	<flow name="AddOrder" doc:id="0024b736-c207-4c9e-a428-83c73290ab19" >
+		<ee:transform doc:name="Set inputOrder Var" doc:id="f0c3eb7d-3d02-4c23-8585-d9b40a7554b7" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="inputOrder" ><![CDATA[%dw 2.0
+output application/dw
+---
+payload]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:insert doc:name="Insert" doc:id="23e2b21c-b5f8-4e1f-88d2-e22554c8d972" config-ref="Database_Config" autoGenerateKeys="true" target="insertresult" >
+			<db:sql ><![CDATA[INSERT INTO `orders`(`customer_id`,`restaurant_id`,`delivery_address_id`,`order_total_price`,`order_status`,`order_time`)
+VALUES(:customerId,:restaurantId,:deliveryAddressId,:orderTotalPrice,:orderStatus,:orderTime)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+customerId: vars.inputOrder.customerId,
+restaurantId: vars.inputOrder.restaurantId,
+deliveryAddressId: vars.inputOrder.deliveryAddressId,
+orderTotalPrice: vars.inputOrder.orderTotalPrice,
+orderStatus: vars.inputOrder.orderStatus,
+orderTime: vars.inputOrder.orderTime
+
+}]]]></db:input-parameters>
+			<db:auto-generated-keys-column-names >
+				<db:auto-generated-keys-column-name value="order_id" />
+			</db:auto-generated-keys-column-names>
+		</db:insert>
+		<set-variable value="#[vars.insertresult.generatedKeys.GENERATED_KEY]" doc:name="Set Variable" doc:id="15b32d70-8992-43e7-8e60-fe8a1e367b13" variableName="id" />
+		<choice doc:name="Choice" doc:id="5a3a5e1e-fd65-453d-a1e2-fc5545acc0ef" >
+			<when expression="#[vars.inputOrder.orderItems? and sizeOf(vars.inputOrder.orderItems)&gt;0]" >
+				<set-variable value="#[[]]" doc:name="Set Variable" doc:id="5735a081-4caf-4c38-b572-0d740fa7ed95" variableName="orderItemsAfterInserting"/>
+				<foreach doc:name="For Each" doc:id="9dde8ff5-e1d0-41ca-8400-08d86b0a2bce" collection="#[vars.inputOrder.orderItems]" >
+					<flow-ref doc:name="AddOrderItemToOrder" doc:id="c368fe5e-8647-4590-b995-6b2d3a040f18" name="AddOrderItemToOrder" />
+					<set-variable value="#[vars.orderItemsAfterInserting + vars.orderItemAfterInserting]" doc:name="Set Variable" doc:id="7c883219-5609-4421-8be7-3042429275e7" variableName="orderItemsAfterInserting"/>
+				</foreach>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="6e97c4da-bf89-4e53-8be0-c4911bfa5c75" message="No OrderItems to Order...So, not inserting" />
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform Message" doc:id="6e9baebf-9ff5-4dbf-bb2e-2f26469a2d30" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	orderId: vars.orderId
+} ++  
+(
+	vars.inputOrder - 'orderItems' ++ {
+	orderItems: vars.orderItemsAfterInserting
+	}
+)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="findOrderByOrderId" doc:id="3b2e70e3-8743-44f9-bdb8-2d0f468b4441" >
+		<db:select doc:name="Select" doc:id="48c94dc0-8377-4709-b5c5-f3b4dec858ae" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select * from orders where order_id= :orderId]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	orderId: vars.id as Number
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="56431935-85b9-4949-95db-b9a0dbc1dd7d" >
+			<when expression="#[isEmpty(payload)]" >
+				<raise-error doc:name="Raise error" doc:id="081d6794-aef7-4fb3-a823-941485a4d932" type="APP:DOESNOT_EXIST" description="Order with id  is not found" />
+			</when>
+			<otherwise >
+				<set-payload value="#[payload[0]]" doc:name="Set Order As Payload" doc:id="d2949ef6-9793-46c0-926c-8fe7d4e53112" />
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="getOrderItemsByOrderId" doc:id="b12c9125-1d79-4001-81b8-f66649d03eac" >
+		<db:select doc:name="Select" doc:id="37f187e6-853e-42f6-9890-a43caca76641" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select * from order_items where order_id= :orderId]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	orderId: vars.id as Number
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="5f3bcf2a-2429-4d3a-ba1f-cd15eaf419b3" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map (item)->{
+  "menuId": item.menu_id,
+  "menuItemId": item.menu_item_id,
+  "orderItemId": item.order_item_id,
+  "orderId": item.order_id,
+  "orderItemPrice": item.order_item_price,
+  "restaurantId": item.restaurant_id,
+  "quantity": item.quantity
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="getOrderByOrderId" doc:id="fdb17a77-3e0e-46f2-bac9-bbc840103382" >
+		<flow-ref doc:name="findOrderByOrderId" doc:id="f92944c3-48be-4236-91ad-2c7099c8cb60" name="findOrderByOrderId" target="order" />
+		<flow-ref doc:name="getOrderItemsByOrderId" doc:id="765c7cb1-6dd8-4d7c-84be-0a6e00a7f01c" name="getOrderItemsByOrderId" target="orderItems" />
+		<ee:transform doc:name="Transform Message" doc:id="75a0e750-e820-4a28-ba89-be31de594aa0" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+      
+{
+  "orderId": vars.order.order_id,
+  "customerId": vars.order.customer_id,
+  "restaurantId": vars.order.restaurant_id,
+  "deliveryAddressId": vars.order.delivery_address_id,
+  "orderTotalPrice": vars.order.order_total_price,
+  "orderStatus": vars.order.order_status,
+  "orderTime": vars.order.order_time,
+  "orderItems": vars.orderItems
+}
+
+    ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="deleteorderbyoyderid" doc:id="75fc73df-aa2b-4594-ae99-81dfca2a0ca2" >
+		<flow-ref doc:name="findOrderByOrderId" doc:id="821dfe3a-835a-4114-964e-75cfe7aac32a" name="findOrderByOrderId" target="order" />
+		<db:delete doc:name="Delete orderitems" doc:id="62619f10-ab64-4a39-b35a-a655c34ef426" config-ref="Database_Config" >
+			<db:sql ><![CDATA[delete from order_items where order_id= :orderId]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	orderId: vars.id
+}]]]></db:input-parameters>
+		</db:delete>
+		<db:delete doc:name="Delete" doc:id="4e88d71f-4736-4272-a4f7-7c76feb52b4e" config-ref="Database_Config" >
+			<db:sql ><![CDATA[delete from orders where order_id= :orderId]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	orderId: vars.id
+}]]]></db:input-parameters>
+		</db:delete>
+	</flow>
+	<flow name="deleteOrderItemByOrderItemId" doc:id="1ab16099-ea2c-49c8-9ee6-2bc05f111a19" >
+		<db:delete doc:name="Delete" doc:id="cb5868bb-548b-42ea-8a13-0c6f5c17333c" config-ref="Database_Config" >
+			<db:sql ><![CDATA[delete from order_items where order_item_id = :orderItemId]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	orderItemId: vars.orderItemId
+}]]]></db:input-parameters>
+		</db:delete>
+	</flow>
+	<flow name="getOrderItemByOrderItemIdandOrderId" doc:id="e8b210fe-3994-4986-b328-a0d314793803" >
+		<db:select doc:name="Select" doc:id="120e26eb-d8e3-43b4-83d5-5461fe669dcf" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select * from order_items where order_item_id= :orderItemId
+ and order_id= :orderId]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	orderItemId: vars.orderItemId as  Number,
+	orderId: vars.id as Number
+	
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="206a202e-2472-43b0-bae8-f0da9eb62a53" >
+			<when expression="#[isEmpty(payload)]" >
+				<raise-error doc:name="Raise error" doc:id="7963c21c-33b6-48c6-b6ba-ad1a951bb401" type="APP:DOESNOT_EXIST" description="OrderItem Doesn't Exist" />
+			</when>
+			<otherwise >
+				<set-payload value="#[payload[0]]" doc:name="Set Payload" doc:id="332223ef-a448-4e10-b770-0566292f2b08" />
+			</otherwise>
+		</choice>
+	</flow>
 </mule>

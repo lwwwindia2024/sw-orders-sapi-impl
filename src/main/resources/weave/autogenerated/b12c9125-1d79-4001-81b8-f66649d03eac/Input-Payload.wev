@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_b12c9125_1d79_4001_81b8_f66649d03eac_Input_Payload = Array<{  quantity: Number,   orderId: Number,   orderItemId: Number,   menuId: Number,   restaurantId: Number,   orderItemPrice: Number,   menuItemId: Number,   _?: Any}>
+
