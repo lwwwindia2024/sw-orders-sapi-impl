@@ -3,7 +3,7 @@
     <http:listener-config name="sw-orders-sapi-raml-httpListenerConfig">
         <http:listener-connection host="0.0.0.0" port="8081" />
     </http:listener-config>
-    <apikit:config name="sw-orders-sapi-raml-config" api="resource::dbf43717-03d0-4c7c-b36b-37ff146429d7:sw-orders-sapi-raml:1.0.6:raml:zip:sw-orders-sapi-raml.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <apikit:config name="sw-orders-sapi-raml-config" api="resource::dbf43717-03d0-4c7c-b36b-37ff146429d7:sw-orders-sapi-raml:1.0.7:raml:zip:sw-orders-sapi-raml.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
     <flow name="sw-orders-sapi-raml-main">
         <http:listener config-ref="sw-orders-sapi-raml-httpListenerConfig" path="/api/*">
             <http:response statusCode="#[vars.httpStatus default 200]">
@@ -186,8 +186,8 @@ output application/json
                 <ee:set-variable variableName="id">attributes.uriParams.'id'</ee:set-variable>
             </ee:variables>
         </ee:transform>
-        <flow-ref doc:name="findOrderByOrderId" doc:id="f7b0049a-9c64-4ff5-a65a-5a125fc6262f" name="findOrderByOrderId"/>
-		<flow-ref doc:name="getOrderItemsByOrderId" doc:id="e15308f0-f904-4eb8-9ccc-2e3ead3e6575" name="getOrderItemsByOrderId"/>
+        <flow-ref doc:name="findOrderByOrderId" doc:id="f7b0049a-9c64-4ff5-a65a-5a125fc6262f" name="findOrderByOrderId" />
+        <flow-ref doc:name="getOrderItemsByOrderId" doc:id="e15308f0-f904-4eb8-9ccc-2e3ead3e6575" name="getOrderItemsByOrderId" />
     </flow>
     <flow name="post:\orders\(id)\orderItems:application\json:sw-orders-sapi-raml-config">
         <ee:transform doc:name="Transform Message" doc:id="d9063720-fb60-49d3-803b-cd15e8e0a7a4">
@@ -195,26 +195,62 @@ output application/json
                 <ee:set-variable variableName="id"><![CDATA[attributes.uriParams.'id']]></ee:set-variable>
             </ee:variables>
         </ee:transform>
-        <flow-ref doc:name="AddOrderItemToOrder" doc:id="4050df62-2547-4f7c-967a-1cb9035e531c" name="AddOrderItemToOrder"/>
-		<ee:transform doc:name="Transform Message" doc:id="a9a25fdf-5350-4423-ba60-b5d6d09e505d" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
+        <flow-ref doc:name="AddOrderItemToOrder" doc:id="4050df62-2547-4f7c-967a-1cb9035e531c" name="AddOrderItemToOrder" />
+        <ee:transform doc:name="Transform Message" doc:id="a9a25fdf-5350-4423-ba60-b5d6d09e505d">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 vars.orderItemAfterInserting]]></ee:set-payload>
-			</ee:message>
-			<ee:variables >
-				<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+            </ee:message>
+            <ee:variables>
+                <ee:set-variable variableName="httpStatus"><![CDATA[%dw 2.0
 output application/java
 ---
 "201"]]></ee:set-variable>
-				<ee:set-variable variableName="outboundHeaders" ><![CDATA[%dw 2.0
+                <ee:set-variable variableName="outboundHeaders"><![CDATA[%dw 2.0
 output application/java
 ---
 {
 	location: "/api/orders/" ++ vars.orderItemId as String
 }]]></ee:set-variable>
-			</ee:variables>
-		</ee:transform>
+            </ee:variables>
+        </ee:transform>
+    </flow>
+    <flow name="delete:\orders\(id)\orderItems\(orderItemId):sw-orders-sapi-raml-config">
+        <ee:transform doc:name="Transform Message">
+            <ee:variables>
+                <ee:set-variable variableName="id">attributes.uriParams.'id'</ee:set-variable>
+                <ee:set-variable variableName="orderItemId">attributes.uriParams.'orderItemId'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="deleteOrderItemByOrderItemId" doc:id="5f9931e2-d721-41a9-b90e-4767bcb8e842" name="deleteOrderItemByOrderItemId"/>
+		<choice doc:name="Choice" doc:id="38bceffe-6f03-46ad-afec-1a03468f3d80" >
+			<when expression="#[payload == 0]">
+				<raise-error doc:name="Raise error" doc:id="e3588d59-f4b9-4fe1-a301-8df5986a44f5" type="APP:DOESNOT_EXIST" description="OrderItem Doesn't Exist" />
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "OrderItem deleted successfully"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+			</otherwise>
+		</choice>
+    </flow>
+    <flow name="get:\orders\(id)\orderItems\(orderItemId):sw-orders-sapi-raml-config">
+        <ee:transform doc:name="Transform Message">
+            <ee:variables>
+                <ee:set-variable variableName="id">attributes.uriParams.'id'</ee:set-variable>
+                <ee:set-variable variableName="orderItemId">attributes.uriParams.'orderItemId'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="getOrderItemByOrderItemIdandOrderId" doc:id="fd407eab-5aaf-4d8e-b04a-52432ed9a2eb" name="getOrderItemByOrderItemIdandOrderId"/>
+		<logger level="INFO" message="get:\orders\(id)\orderItems\(orderItemId):sw-orders-sapi-raml-config" />
     </flow>
 </mule>

@@ -218,4 +218,31 @@ output application/json
 }]]]></db:input-parameters>
 		</db:delete>
 	</flow>
+	<flow name="deleteOrderItemByOrderItemId" doc:id="1ab16099-ea2c-49c8-9ee6-2bc05f111a19" >
+		<db:delete doc:name="Delete" doc:id="cb5868bb-548b-42ea-8a13-0c6f5c17333c" config-ref="Database_Config" >
+			<db:sql ><![CDATA[delete from order_items where order_item_id = :orderItemId]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	orderItemId: vars.orderItemId
+}]]]></db:input-parameters>
+		</db:delete>
+	</flow>
+	<flow name="getOrderItemByOrderItemIdandOrderId" doc:id="e8b210fe-3994-4986-b328-a0d314793803" >
+		<db:select doc:name="Select" doc:id="120e26eb-d8e3-43b4-83d5-5461fe669dcf" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select * from order_items where order_item_id= :orderItemId
+ and order_id= :orderId]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	orderItemId: vars.orderItemId as  Number,
+	orderId: vars.id as Number
+	
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="206a202e-2472-43b0-bae8-f0da9eb62a53" >
+			<when expression="#[isEmpty(payload)]" >
+				<raise-error doc:name="Raise error" doc:id="7963c21c-33b6-48c6-b6ba-ad1a951bb401" type="APP:DOESNOT_EXIST" description="OrderItem Doesn't Exist" />
+			</when>
+			<otherwise >
+				<set-payload value="#[payload[0]]" doc:name="Set Payload" doc:id="332223ef-a448-4e10-b770-0566292f2b08" />
+			</otherwise>
+		</choice>
+	</flow>
 </mule>
